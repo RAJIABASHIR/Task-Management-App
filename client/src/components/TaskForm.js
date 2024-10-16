@@ -1,62 +1,115 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
-const TaskForm = ({ fetchTasks, existingTask }) => {
+const API_URL = 'http://localhost:3000/api/tasks'; 
+
+const TaskForm = ({ task, onTaskCreate, onTaskUpdate, onCancelEdit }) => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [priority, setPriority] = useState('low');
+    const [priority, setPriority] = useState('medium');
     const [status, setStatus] = useState('To Do'); 
+
     useEffect(() => {
-        if (existingTask) {
-            setTitle(existingTask.title);
-            setDescription(existingTask.description);
-            setPriority(existingTask.priority);
-            setStatus(existingTask.status); 
+        if (task) {
+            setTitle(task.title);
+            setDescription(task.description);
+            setPriority(task.priority || 'medium');
+            setStatus(task.status || 'To Do');
         } else {
+
             setTitle('');
             setDescription('');
-            setPriority('low');
-            setStatus('To Do'); 
+            setPriority('medium');
+            setStatus('To Do');
         }
-    }, [existingTask]);
+    }, [task]);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        const newTask = { title, description, priority, status }; 
-        console.log('Task submitted:', newTask);
-        fetchTasks(); 
-        setTitle('');
-        setDescription('');
-        setPriority('low');
-        setStatus('To Do'); 
+        const taskData = { title, description, priority, status };
+
+        try {
+            if (task) {
+                const response = await fetch(`${API_URL}/${task.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(taskData),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update the task');
+                }
+
+                onTaskUpdate(task.id, taskData);
+            } else {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(taskData),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create the task');
+                }
+
+                const newTask = await response.json();
+                onTaskCreate(newTask); 
+            }
+
+            setTitle('');
+            setDescription('');
+            setPriority('medium'); 
+            setStatus('To Do'); 
+        } catch (error) {
+            console.error(error.message);
+            alert(error.message); 
+        }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="task-form">
-            <h2>{existingTask ? 'Update Task' : 'Create Task'}</h2>
+        <form onSubmit={handleSubmit}>
+            <h2>{task ? 'Edit Task' : 'Create Task'}</h2>
             <input
                 type="text"
+                placeholder="Task Title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Task Title"
                 required
             />
             <textarea
+                placeholder="Task Description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Task Description"
                 required
             />
-            <select value={priority} onChange={(e) => setPriority(e.target.value)}>
+            <label htmlFor="priority">Priority:</label>
+            <select
+                id="priority"
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                required
+            >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
             </select>
-            <select value={status} onChange={(e) => setStatus(e.target.value)}>
+            <label htmlFor="status">Status:</label>
+            <select
+                id="status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                required
+            >
                 <option value="To Do">To Do</option>
                 <option value="In Progress">In Progress</option>
                 <option value="Completed">Completed</option>
             </select>
-            <button type="submit">{existingTask ? 'Update Task' : 'Add Task'}</button>
+
+            <button type="submit">{task ? 'Update Task' : 'Create Task'}</button>
+            {task && <button type="button" onClick={onCancelEdit}>Cancel</button>}
         </form>
     );
 };
