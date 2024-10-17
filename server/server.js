@@ -12,9 +12,17 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json()); 
 
-app.get('/', (req, res) => {
-  res.send();
-})
+app.get('/api/tasks', (req, res) => {
+  const sql = 'SELECT * FROM tasks';
+  
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error retrieving tasks from database:', err);
+      return res.status(500).send('Error fetching the tasks');
+    }
+    res.status(200).json(results);
+  });
+});
 app.post('/api/tasks', authMiddleware, (req, res) => {
   const { title, description, priority, status } = req.body;
   
